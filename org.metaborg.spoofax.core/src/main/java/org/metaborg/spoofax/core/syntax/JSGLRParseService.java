@@ -137,6 +137,7 @@ public class JSGLRParseService implements ISpoofaxParser, ILanguageCache {
                         if(component.config().sdfEnabled()) {
                             if(component.config().completionsParseTable() != null) {
                                 if(multipleTables) {
+                                	logger.error("Different components are specifying multiple parse tables.");
                                     throw new ParseException(input);
                                 }
 
@@ -154,9 +155,11 @@ public class JSGLRParseService implements ISpoofaxParser, ILanguageCache {
             
             try {
                 if(parseTable == null || !parseTable.exists()) {
+                	logger.error("Could not load parse table.");
                     throw new ParseException(input);
                 }
             } catch(FileSystemException e) {
+            	logger.error("Could not load parse table.");
                 throw new ParseException(input, e);
             }
 
@@ -185,6 +188,7 @@ public class JSGLRParseService implements ISpoofaxParser, ILanguageCache {
                         if(component.config().sdfEnabled()) {
                             if(component.config().completionsParseTable() != null) {
                                 if(multipleTables) {
+                                	logger.error("Different components are specifying multiple completion parse tables.");
                                     throw new ParseException(input);
                                 }
 
@@ -196,6 +200,7 @@ public class JSGLRParseService implements ISpoofaxParser, ILanguageCache {
 
                     }
                 } catch(FileSystemException e) {
+                	logger.error("Could not load completions parse table.");
                     throw new ParseException(input, e);
                 }
             } else {
@@ -204,9 +209,11 @@ public class JSGLRParseService implements ISpoofaxParser, ILanguageCache {
 
             try {
                 if(completionParseTable == null || !completionParseTable.exists()) {
+                	logger.error("Could not load completions parse table.");
                     throw new ParseException(input);
                 }
             } catch(FileSystemException e) {
+            	logger.error("Could not load completions parse table.");
                 throw new ParseException(input, e);
             }
 
