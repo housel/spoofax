@@ -250,10 +250,10 @@ public class JSGLRCompletionService implements ISpoofaxCompletionService {
                         .addAll(optionalCompletions(optionals, blankLineCompletion, languageName, component, location));
                 }
                 // TODO Improve recursive completions
-//                if(Iterables.size(leftRecursive) != 0 || Iterables.size(rightRecursive) != 0) {
-//                    completions
-//                        .addAll(recursiveCompletions(leftRecursive, rightRecursive, languageName, component, location));
-//                }
+                if(Iterables.size(leftRecursive) != 0 || Iterables.size(rightRecursive) != 0) {
+                    completions
+                        .addAll(recursiveCompletions(leftRecursive, rightRecursive, languageName, component, location));
+                }
             }
         }
         return completions;
