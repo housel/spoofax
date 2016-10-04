@@ -67,7 +67,6 @@ public class JSGLRParseService implements ISpoofaxParser, ILanguageCache {
 
         // WORKAROUND: JSGLR can't handle an empty input string, return empty tuple with null tokenizer.
         if(text == null || text.isEmpty()) {
-
             final IStrategoTerm emptyTuple = termFactory.makeTuple();
             final String filename;
             if(input.detached()) {
@@ -79,7 +78,6 @@ public class JSGLRParseService implements ISpoofaxParser, ILanguageCache {
             final IToken token = tokenizer.currentToken();
             ImploderAttachment.putImploderAttachment(emptyTuple, false, "", token, token, false, false, false, false);
             return unitService.parseUnit(input, new ParseContrib(emptyTuple));
-
         }
 
         final IParserConfig config;
@@ -137,7 +135,7 @@ public class JSGLRParseService implements ISpoofaxParser, ILanguageCache {
                         if(component.config().sdfEnabled()) {
                             if(component.config().completionsParseTable() != null) {
                                 if(multipleTables) {
-                                	logger.error("Different components are specifying multiple parse tables.");
+                                    logger.error("Different components are specifying multiple parse tables.");
                                     throw new ParseException(input);
                                 }
 
@@ -147,6 +145,7 @@ public class JSGLRParseService implements ISpoofaxParser, ILanguageCache {
                         }
                     }
                 } catch(FileSystemException e) {
+                    logger.error("Parse table not found or sdf is not enabled for this language.");
                     throw new ParseException(input, e);
                 }
             } else {
@@ -155,11 +154,11 @@ public class JSGLRParseService implements ISpoofaxParser, ILanguageCache {
             
             try {
                 if(parseTable == null || !parseTable.exists()) {
-                	logger.error("Could not load parse table.");
+                    logger.error("Parse table not found or sdf is not enabled for this language.");
                     throw new ParseException(input);
                 }
             } catch(FileSystemException e) {
-            	logger.error("Could not load parse table.");
+                logger.error("Parse table not found or sdf is not enabled for this language.");
                 throw new ParseException(input, e);
             }
 
@@ -188,7 +187,7 @@ public class JSGLRParseService implements ISpoofaxParser, ILanguageCache {
                         if(component.config().sdfEnabled()) {
                             if(component.config().completionsParseTable() != null) {
                                 if(multipleTables) {
-                                	logger.error("Different components are specifying multiple completion parse tables.");
+                                    logger.error("Different components are specifying multiple completion parse tables.");
                                     throw new ParseException(input);
                                 }
 
@@ -200,7 +199,7 @@ public class JSGLRParseService implements ISpoofaxParser, ILanguageCache {
 
                     }
                 } catch(FileSystemException e) {
-                	logger.error("Could not load completions parse table.");
+                    logger.error("Completion parse table not found or sdf is not enabled for this language.");
                     throw new ParseException(input, e);
                 }
             } else {
@@ -209,11 +208,11 @@ public class JSGLRParseService implements ISpoofaxParser, ILanguageCache {
 
             try {
                 if(completionParseTable == null || !completionParseTable.exists()) {
-                	logger.error("Could not load completions parse table.");
+                    logger.error("Completion parse table not found or sdf is not enabled for this language.");
                     throw new ParseException(input);
                 }
             } catch(FileSystemException e) {
-            	logger.error("Could not load completions parse table.");
+                logger.error("Completion parse table not found or sdf is not enabled for this language.");
                 throw new ParseException(input, e);
             }
 
