@@ -8,7 +8,6 @@ import java.util.List;
 import javax.annotation.Nullable;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.vfs2.FileObject;
 import org.apache.commons.vfs2.FileSystemException;
 import org.metaborg.core.config.IExportConfig;
 import org.metaborg.core.config.IExportVisitor;
@@ -36,7 +35,7 @@ import org.metaborg.spoofax.meta.core.pluto.build.Sdf2Table;
 import org.metaborg.spoofax.meta.core.pluto.build.Sdf2TableNew;
 import org.metaborg.spoofax.meta.core.pluto.build.Strj;
 import org.metaborg.spoofax.meta.core.pluto.build.Typesmart;
-import org.metaborg.spoofax.nativebundle.NativeBundle;
+import org.metaborg.spoofax.meta.core.pluto.build.misc.PrepareNativeBundle;
 import org.metaborg.util.cmd.Arguments;
 
 import com.google.common.collect.Lists;
@@ -44,6 +43,7 @@ import com.google.common.collect.Lists;
 import build.pluto.builder.BuildRequest;
 import build.pluto.dependency.Origin;
 import build.pluto.output.None;
+import build.pluto.output.OutputTransient;
 import build.pluto.stamp.FileExistsStamper;
 
 public class GenerateSourcesBuilder extends SpoofaxBuilder<GenerateSourcesBuilder.Input, None> {
@@ -77,6 +77,7 @@ public class GenerateSourcesBuilder extends SpoofaxBuilder<GenerateSourcesBuilde
         public final @Nullable File strExternalJar;
         public final @Nullable String strExternalJarFlags;
         public final List<File> strjIncludeDirs;
+        public final List<File> strjIncludeFiles;
         public final Arguments strjArgs;
 
 
@@ -87,7 +88,7 @@ public class GenerateSourcesBuilder extends SpoofaxBuilder<GenerateSourcesBuilde
             @Nullable String sdfMetaModule, @Nullable File sdfMetaFile, @Nullable File strFile,
             @Nullable String strJavaPackage, @Nullable String strJavaStratPackage, @Nullable File strJavaStratFile,
             StrategoFormat strFormat, @Nullable File strExternalJar, @Nullable String strExternalJarFlags,
-            List<File> strjIncludeDirs, Arguments strjArgs) {
+            List<File> strjIncludeDirs, List<File> strjIncludeFiles, Arguments strjArgs) {
             super(context);
             this.languageId = languageId;
             this.sdfEnabled = sdfEnabled;
@@ -111,6 +112,7 @@ public class GenerateSourcesBuilder extends SpoofaxBuilder<GenerateSourcesBuilde
             this.strExternalJar = strExternalJar;
             this.strExternalJarFlags = strExternalJarFlags;
             this.strjIncludeDirs = strjIncludeDirs;
+            this.strjIncludeFiles = strjIncludeFiles;
             this.strjArgs = strjArgs;
         }
     }
@@ -197,15 +199,18 @@ public class GenerateSourcesBuilder extends SpoofaxBuilder<GenerateSourcesBuilde
                 final Origin permissiveDefOrigin = MakePermissive.origin(
                     new MakePermissive.Input(context, packSdfFile, permissiveDefFile, sdfModule, packSdfOrigin));
 
-                if(input.sdf2tableVersion == Sdf2tableVersion.java) {
-                    // Get JSGLR parse table and parenthesizer, from the normalized SDF aterm
-
+                if(input.sdf2tableVersion == Sdf2tableVersion.java
+                    || input.sdf2tableVersion == Sdf2tableVersion.dynamic) {
+                    // Get JSGLR parse table from the normalized SDF aterm
+                    final boolean dynamicGeneration = (input.sdf2tableVersion == Sdf2tableVersion.dynamic);
                     final File srcNormDir = toFile(paths.syntaxNormDir());
                     final File tableFile = FileUtils.getFile(targetMetaborgDir, "sdf-new.tbl");
+                    final File contextualGrammarFile = FileUtils.getFile(targetMetaborgDir, "ctxgrammar.aterm");
+                    final File normGrammarFile = FileUtils.getFile(targetMetaborgDir, "normgrammar.bin");
                     File sdfNormFile = FileUtils.getFile(srcNormDir, sdfModule + "-norm.aterm");
                     final List<String> paths = Lists.newLinkedList();
                     paths.add(srcGenSyntaxDir.getAbsolutePath());
-                    
+
                     for(LanguageIdentifier langId : input.sourceDeps) {
                         ILanguageImpl lang = context.languageService().getImpl(langId);
                         for(final ILanguageComponent component : lang.components()) {
@@ -239,18 +244,18 @@ public class GenerateSourcesBuilder extends SpoofaxBuilder<GenerateSourcesBuilde
                         }
                     }
 
-                    final Origin sdf2TableJavaOrigin =
-                        Sdf2TableNew.origin(new Sdf2TableNew.Input(context, sdfNormFile, tableFile, paths, true));
+                    final Origin sdf2TableJavaOrigin = Sdf2TableNew.origin(new Sdf2TableNew.Input(context, sdfNormFile,
+                        tableFile, normGrammarFile, contextualGrammarFile, paths, true, dynamicGeneration));
 
                     requireBuild(sdf2TableJavaOrigin);
-                    parenthesizeOrigin = null;
-                } else {
-                    // Get Stratego parenthesizer file, from the SDF def file.
-                    final File parenthesizeFile = FileUtils.getFile(srcGenPpDir, sdfModule + "-parenthesize.str");
-                    final String parenthesizeModule = "pp/" + sdfModule + "-parenthesize";
-                    parenthesizeOrigin = Sdf2Parenthesize.origin(new Sdf2Parenthesize.Input(context, packSdfFile,
-                        parenthesizeFile, sdfModule, parenthesizeModule, packSdfOrigin));
                 }
+
+                // Get Stratego parenthesizer file, from the SDF def file.
+                final File parenthesizeFile = FileUtils.getFile(srcGenPpDir, sdfModule + "-parenthesize.str");
+                final String parenthesizeModule = "pp/" + sdfModule + "-parenthesize";
+                parenthesizeOrigin = Sdf2Parenthesize.origin(new Sdf2Parenthesize.Input(context, packSdfFile,
+                    parenthesizeFile, sdfModule, parenthesizeModule, packSdfOrigin));
+
 
                 // Get JSGLR parse table, from the SDF permissive def file.
                 final File tableFile = FileUtils.getFile(targetMetaborgDir, "sdf.tbl");
@@ -274,12 +279,13 @@ public class GenerateSourcesBuilder extends SpoofaxBuilder<GenerateSourcesBuilde
             final String sdfCompletionsModule = input.sdfCompletionModule;
             final File sdfCompletionsFile = input.sdfCompletionFile;
 
-            if(input.sdf2tableVersion == Sdf2tableVersion.java) {
+            if(input.sdf2tableVersion == Sdf2tableVersion.java || input.sdf2tableVersion == Sdf2tableVersion.dynamic) {
                 // Get JSGLR parse table, from the normalized SDF aterm
 
+                final boolean dynamicGeneration = (input.sdf2tableVersion == Sdf2tableVersion.dynamic);
                 final List<String> paths = Lists.newLinkedList();
                 paths.add(srcGenSyntaxDir.getAbsolutePath());
-                
+
                 for(LanguageIdentifier langId : input.sourceDeps) {
                     ILanguageImpl lang = context.languageService().getImpl(langId);
                     for(final ILanguageComponent component : lang.components()) {
@@ -314,8 +320,8 @@ public class GenerateSourcesBuilder extends SpoofaxBuilder<GenerateSourcesBuilde
                 }
 
                 final File tableFile = FileUtils.getFile(targetMetaborgDir, "sdf-completions.tbl");
-                sdfCompletionOrigin =
-                    Sdf2TableNew.origin(new Sdf2TableNew.Input(context, sdfCompletionsFile, tableFile, paths, false));
+                sdfCompletionOrigin = Sdf2TableNew.origin(new Sdf2TableNew.Input(context, sdfCompletionsFile, tableFile,
+                    null, null, paths, false, dynamicGeneration));
 
                 requireBuild(sdfCompletionOrigin);
             } else {
@@ -373,16 +379,17 @@ public class GenerateSourcesBuilder extends SpoofaxBuilder<GenerateSourcesBuilde
             }
             final String sdfMetaModule = input.sdfMetaModule;
 
-            final FileObject strategoMixPath = context.resourceService().resolve(NativeBundle.getStrategoMix());
-            final File strategoMixFile = toFileReplicate(strategoMixPath);
+            final BuildRequest<PrepareNativeBundle.Input, OutputTransient<PrepareNativeBundle.Output>, PrepareNativeBundle, SpoofaxBuilderFactory<PrepareNativeBundle.Input, OutputTransient<PrepareNativeBundle.Output>, PrepareNativeBundle>> nativeBundleRequest =
+                PrepareNativeBundle.request(new PrepareNativeBundle.Input(context));
+            final File strategoMixFile = requireBuild(nativeBundleRequest).val().strategoMixFile;
+            final Origin strategoMixOrigin = Origin.from(nativeBundleRequest);
             final Arguments packSdfMetaArgs = new Arguments(input.packSdfArgs);
             packSdfMetaArgs.addFile("-Idef", strategoMixFile);
-            provide(strategoMixFile);
 
             final File packSdfFile = FileUtils.getFile(srcGenSyntaxDir, sdfMetaModule + ".def");
 
             final Origin packSdfOrigin = PackSdf.origin(new PackSdf.Input(context, sdfMetaModule, sdfMetaFile,
-                packSdfFile, input.packSdfIncludePaths, packSdfMetaArgs, null));
+                packSdfFile, input.packSdfIncludePaths, packSdfMetaArgs, strategoMixOrigin));
 
             final File permissiveDefFile = FileUtils.getFile(srcGenSyntaxDir, sdfMetaModule + "-permissive.def");
             final Origin permissiveDefOrigin = MakePermissive.origin(
@@ -441,6 +448,7 @@ public class GenerateSourcesBuilder extends SpoofaxBuilder<GenerateSourcesBuilde
             
             if(input.sdf2tableVersion == Sdf2tableVersion.java) {
                 origin = Origin.Builder()
+                    .add(parenthesizeOrigin)
                     .add(sigOrigin)
                     .add(sdfCompletionOrigin)
                     .add(sdfMetaOrigin)
@@ -460,7 +468,7 @@ public class GenerateSourcesBuilder extends SpoofaxBuilder<GenerateSourcesBuilde
             final Strj.Input strjInput =
 
                 new Strj.Input(context, strFile, outputFile, depPath, input.strJavaPackage, true, true,
-                    input.strjIncludeDirs, Lists.<String>newArrayList(), cacheDir, extraArgs, origin);
+                    input.strjIncludeDirs, input.strjIncludeFiles, Lists.newArrayList(), cacheDir, extraArgs, origin);
 
             final Origin strjOrigin = Strj.origin(strjInput);
             requireBuild(strjOrigin);

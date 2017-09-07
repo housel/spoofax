@@ -1,12 +1,9 @@
 package org.metaborg.spoofax.core.analysis.legacy;
 
-import java.io.File;
 import java.util.Collection;
 
 import org.apache.commons.vfs2.FileObject;
-import org.apache.commons.vfs2.FileSystemException;
 import org.metaborg.core.MetaborgException;
-import org.metaborg.core.MetaborgRuntimeException;
 import org.metaborg.core.analysis.AnalysisException;
 import org.metaborg.core.context.IContext;
 import org.metaborg.core.language.FacetContribution;
@@ -14,7 +11,6 @@ import org.metaborg.core.language.ILanguageImpl;
 import org.metaborg.core.messages.IMessage;
 import org.metaborg.core.messages.MessageFactory;
 import org.metaborg.core.messages.MessageSeverity;
-import org.metaborg.core.resource.IResourceService;
 import org.metaborg.spoofax.core.analysis.AnalysisCommon;
 import org.metaborg.spoofax.core.analysis.AnalysisFacet;
 import org.metaborg.spoofax.core.analysis.ISpoofaxAnalyzeResult;
@@ -32,6 +28,8 @@ import org.metaborg.spoofax.core.unit.ISpoofaxUnitService;
 import org.metaborg.util.iterators.Iterables2;
 import org.metaborg.util.log.ILogger;
 import org.metaborg.util.log.LoggerUtils;
+import org.metaborg.util.task.ICancel;
+import org.metaborg.util.task.IProgress;
 import org.metaborg.util.time.Timer;
 import org.spoofax.interpreter.terms.IStrategoString;
 import org.spoofax.interpreter.terms.IStrategoTerm;
@@ -51,7 +49,6 @@ public class StrategoAnalyzer implements ISpoofaxAnalyzer {
 
     private static final ILogger logger = LoggerUtils.logger(StrategoAnalyzer.class);
 
-    private final IResourceService resourceService;
     private final ISpoofaxUnitService unitService;
     private final ITermFactoryService termFactoryService;
     private final IStrategoRuntimeService runtimeService;
@@ -60,10 +57,9 @@ public class StrategoAnalyzer implements ISpoofaxAnalyzer {
     private final AnalysisCommon analysisCommon;
 
 
-    @Inject public StrategoAnalyzer(IResourceService resourceService, ISpoofaxUnitService unitService,
-        ITermFactoryService termFactoryService, IStrategoRuntimeService runtimeService, IStrategoCommon strategoCommon,
+    @Inject public StrategoAnalyzer(ISpoofaxUnitService unitService, ITermFactoryService termFactoryService,
+            IStrategoRuntimeService runtimeService, IStrategoCommon strategoCommon,
         AnalysisCommon analysisCommon) {
-        this.resourceService = resourceService;
         this.unitService = unitService;
         this.termFactoryService = termFactoryService;
         this.runtimeService = runtimeService;
@@ -72,7 +68,10 @@ public class StrategoAnalyzer implements ISpoofaxAnalyzer {
     }
 
 
-    @Override public ISpoofaxAnalyzeResult analyze(ISpoofaxParseUnit input, IContext context) throws AnalysisException {
+    @Override public ISpoofaxAnalyzeResult analyze(ISpoofaxParseUnit input, IContext context, IProgress progress,
+        ICancel cancel) throws AnalysisException, InterruptedException {
+        cancel.throwIfCancelled();
+        
         if(!input.valid()) {
             final String message = logger.format("Parse input for {} is invalid, cannot analyze", input.source());
             throw new AnalysisException(context, message);
@@ -89,6 +88,7 @@ public class StrategoAnalyzer implements ISpoofaxAnalyzer {
         }
         final AnalysisFacet facet = facetContribution.facet;
 
+        cancel.throwIfCancelled();
         final HybridInterpreter runtime;
         try {
             runtime = runtimeService.runtime(facetContribution.contributor, context, true);
@@ -96,12 +96,15 @@ public class StrategoAnalyzer implements ISpoofaxAnalyzer {
             throw new AnalysisException(context, "Failed to get Stratego runtime", e);
         }
 
+        cancel.throwIfCancelled();
         final ISpoofaxAnalyzeUnit result = analyze(input, context, runtime, facet.strategyName, termFactory);
         return new SpoofaxAnalyzeResult(result, context);
     }
 
-    @Override public ISpoofaxAnalyzeResults analyzeAll(Iterable<ISpoofaxParseUnit> inputs, IContext context)
-        throws AnalysisException {
+    @Override public ISpoofaxAnalyzeResults analyzeAll(Iterable<ISpoofaxParseUnit> inputs, IContext context,
+        IProgress progress, ICancel cancel) throws AnalysisException, InterruptedException {
+        cancel.throwIfCancelled();
+        
         final ILanguageImpl language = context.language();
         final ITermFactory termFactory = termFactoryService.getGeneric();
 
@@ -112,6 +115,7 @@ public class StrategoAnalyzer implements ISpoofaxAnalyzer {
         }
         final AnalysisFacet facet = facetContribution.facet;
 
+        cancel.throwIfCancelled();
         final HybridInterpreter runtime;
         try {
             runtime = runtimeService.runtime(facetContribution.contributor, context, true);
@@ -119,15 +123,20 @@ public class StrategoAnalyzer implements ISpoofaxAnalyzer {
             throw new AnalysisException(context, "Failed to get Stratego runtime", e);
         }
 
-        final Collection<ISpoofaxAnalyzeUnit> results = Lists.newArrayListWithCapacity(Iterables.size(inputs));
+        final int size = Iterables.size(inputs);
+        progress.setWorkRemaining(size);
+        final Collection<ISpoofaxAnalyzeUnit> results = Lists.newArrayListWithCapacity(size);
         for(ISpoofaxParseUnit input : inputs) {
+            cancel.throwIfCancelled();
             if(!input.valid()) {
                 logger.warn("Parse input for {} is invalid, cannot analyze", input.source());
                 // TODO: throw exception instead?
+                progress.work(1);
                 continue;
             }
             final ISpoofaxAnalyzeUnit result = analyze(input, context, runtime, facet.strategyName, termFactory);
             results.add(result);
+            progress.work(1);
         }
         return new SpoofaxAnalyzeResults(results, context);
     }
@@ -135,43 +144,10 @@ public class StrategoAnalyzer implements ISpoofaxAnalyzer {
     private ISpoofaxAnalyzeUnit analyze(ISpoofaxParseUnit input, IContext context, HybridInterpreter runtime,
         String strategy, ITermFactory termFactory) throws AnalysisException {
         final FileObject source = input.source();
-        final FileObject contextLocation = context.location();
-        final File localContextLocation;
-        try {
-            localContextLocation = resourceService.localFile(contextLocation);
-        } catch(MetaborgRuntimeException e) {
-            final String message = logger.format("Context location {} does not exist, cannot analyze", contextLocation);
-            throw new AnalysisException(context, message, e);
-        }
 
-        final IStrategoString path;
-        if(source != null) {
-            final File localResource;
-            try {
-                if(source.exists()) {
-                    localResource = resourceService.localFile(source);
-                } else {
-                    localResource = resourceService.localPath(source);
-                }
-                if(localResource == null) {
-                    logger.error(
-                        "Input {} does not exist, and cannot reside on the local file system, cannot analyze it",
-                        source);
-                    return result(
-                        "Source file does not exist and cannot reside on the local file system, cannot analyze it",
-                        input, context, null, -1);
-                }
-            } catch(FileSystemException e) {
-                logger.error("Cannot determine if input {} exists, cannot analyze it", e, source);
-                return result("Cannot determine if source file exists", input, context, e, -1);
-            }
-            path = strategoCommon.localResourceTerm(localResource, localContextLocation);
-        } else {
-            logger.debug("Parse unit has no source, using 'null' as path");
-            path = termFactory.makeString("null");
-        }
-        final IStrategoString contextPath = strategoCommon.localLocationTerm(localContextLocation);
-        final IStrategoTuple inputTerm = termFactory.makeTuple(input.ast(), path, contextPath);
+        final IStrategoString contextPath = strategoCommon.locationTerm(context.location());
+        final IStrategoString resourcePath = strategoCommon.resourceTerm(source, context.location());
+        final IStrategoTuple inputTerm = termFactory.makeTuple(input.ast(), resourcePath, contextPath);
 
         try {
             logger.trace("Analysing {}", source);
@@ -223,8 +199,8 @@ public class StrategoAnalyzer implements ISpoofaxAnalyzer {
         messages.addAll(notes);
         messages.addAll(ambiguities);
 
-        return unitService.analyzeUnit(input,
-            new AnalyzeContrib(true, errors.isEmpty(), true, ast, messages, duration), context);
+        return unitService.analyzeUnit(input, new AnalyzeContrib(true, errors.isEmpty(), true, ast, messages, duration),
+            context);
     }
 
     private ISpoofaxAnalyzeUnit resultNoAst(IStrategoTerm result, ISpoofaxParseUnit input, IContext context,
@@ -252,7 +228,6 @@ public class StrategoAnalyzer implements ISpoofaxAnalyzer {
         final FileObject source = input.source();
         final IMessage message = MessageFactory.newAnalysisErrorAtTop(source, error, e);
         return unitService.analyzeUnit(input,
-            new AnalyzeContrib(false, false, true, null, Iterables2.singleton(message), duration),
-            context);
+            new AnalyzeContrib(false, false, true, null, Iterables2.singleton(message), duration), context);
     }
 }

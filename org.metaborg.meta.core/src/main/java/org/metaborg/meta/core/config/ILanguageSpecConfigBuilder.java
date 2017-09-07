@@ -40,16 +40,6 @@ public interface ILanguageSpecConfigBuilder extends ILanguageComponentConfigBuil
     /**
      * {@inheritDoc}
      */
-    @Override ILanguageSpecConfigBuilder withIdentifier(LanguageIdentifier identifier);
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override ILanguageSpecConfigBuilder withName(String name);
-
-    /**
-     * {@inheritDoc}
-     */
     @Override ILanguageSpecConfigBuilder withCompileDeps(Iterable<LanguageIdentifier> deps);
 
     /**
@@ -77,6 +67,17 @@ public interface ILanguageSpecConfigBuilder extends ILanguageComponentConfigBuil
      */
     @Override ILanguageSpecConfigBuilder addJavaDeps(Iterable<LanguageIdentifier> deps);
 
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override ILanguageSpecConfigBuilder withIdentifier(LanguageIdentifier identifier);
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override ILanguageSpecConfigBuilder withName(String name);
+    
     /**
      * {@inheritDoc}
      */

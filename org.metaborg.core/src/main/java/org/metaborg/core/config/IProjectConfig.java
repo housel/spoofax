@@ -6,38 +6,30 @@ import org.metaborg.core.language.LanguageIdentifier;
 
 public interface IProjectConfig {
     /**
-     * Gets the version of MetaBorg tooling to use.
-     * 
-     * @return The version of MetaBorg tooling to use.
+     * @return Version of MetaBorg tooling to use.
      */
     String metaborgVersion();
-    
+
     /**
-     * Gets the compile dependencies.
+     * Gets the file sources.
      *
-     * @return The compile dependency identifiers.
+     * @return The file sources.
+     */
+    Collection<ISourceConfig> sources();
+
+    /**
+     * @return Compile dependency identifiers.
      */
     Collection<LanguageIdentifier> compileDeps();
 
     /**
-     * Gets the source dependencies.
-     *
-     * @return The source dependency identifiers.
+     * @return Source dependency identifiers.
      */
     Collection<LanguageIdentifier> sourceDeps();
-    
+
     /**
-     * Gets the Java dependencies.
-     *
-     * @return The Java dependency identifiers.
+     * @return Java dependency identifiers.
      */
     Collection<LanguageIdentifier> javaDeps();
 
-    
-    /**
-     * Gets the typesmart property;
-     * 
-     * @return the typesmart property.
-     */
-    boolean typesmart();
 }

@@ -1,6 +1,6 @@
 package org.metaborg.spoofax.core.stratego;
 
-import java.io.File;
+import javax.annotation.Nullable;
 
 import org.apache.commons.vfs2.FileObject;
 import org.metaborg.core.MetaborgException;
@@ -29,7 +29,7 @@ public interface IStrategoCommon {
      * @throws MetaborgException
      *             When invoking the strategy fails unexpectedly.
      */
-    IStrategoTerm invoke(ILanguageComponent component, IContext context, IStrategoTerm input, String strategy)
+    @Nullable IStrategoTerm invoke(ILanguageComponent component, IContext context, IStrategoTerm input, String strategy)
         throws MetaborgException;
 
     /**
@@ -50,7 +50,7 @@ public interface IStrategoCommon {
      * @throws MetaborgException
      *             When invoking the strategy fails unexpectedly.
      */
-    IStrategoTerm invoke(ILanguageImpl impl, IContext context, IStrategoTerm input, String strategy)
+    @Nullable IStrategoTerm invoke(ILanguageImpl impl, IContext context, IStrategoTerm input, String strategy)
         throws MetaborgException;
 
     /**
@@ -71,7 +71,7 @@ public interface IStrategoCommon {
      * @throws MetaborgException
      *             When invoking the strategy fails unexpectedly.
      */
-    IStrategoTerm invoke(ILanguageImpl impl, FileObject location, IStrategoTerm input, String strategy)
+    @Nullable IStrategoTerm invoke(ILanguageImpl impl, FileObject location, IStrategoTerm input, String strategy)
         throws MetaborgException;
 
     /**
@@ -87,7 +87,8 @@ public interface IStrategoCommon {
      * @throws MetaborgException
      *             When invoking the strategy fails unexpectedly.
      */
-    IStrategoTerm invoke(HybridInterpreter runtime, IStrategoTerm input, String strategy) throws MetaborgException;
+    @Nullable IStrategoTerm invoke(HybridInterpreter runtime, IStrategoTerm input, String strategy)
+        throws MetaborgException;
 
     /**
      * Converts a location into a Stratego string.
@@ -96,7 +97,7 @@ public interface IStrategoCommon {
      *            Location to convert.
      * @return Stratego string with location.
      */
-    IStrategoString localLocationTerm(File localLocation);
+    IStrategoString locationTerm(FileObject location);
 
     /**
      * Converts a resource relative to a location into a Stratego string.
@@ -107,7 +108,7 @@ public interface IStrategoCommon {
      *            Location to convert relative to.
      * @return Stratego string with resource.
      */
-    IStrategoString localResourceTerm(File localResource, File localLocation);
+    IStrategoString resourceTerm(FileObject resource, FileObject location);
 
     /**
      * Creates an input term for a builder.
@@ -119,11 +120,8 @@ public interface IStrategoCommon {
      * @param location
      *            Location of the input context.
      * @return A 5-tuple input term (selected, position, ast, path, project-path).
-     * @throws MetaborgException
-     *             When {@code resource} or {@code location} do not reside on the local file system.
      */
-    IStrategoTerm builderInputTerm(IStrategoTerm ast, FileObject resource, FileObject location)
-        throws MetaborgException;
+    IStrategoTerm builderInputTerm(IStrategoTerm ast, FileObject resource, FileObject location);
 
     /**
      * Turns given term into a string. If the term is a string, return the string. Otherwise, return a pretty-printed

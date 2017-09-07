@@ -10,6 +10,7 @@ import org.metaborg.core.config.IConfig;
 import org.metaborg.core.config.IExportConfig;
 import org.metaborg.core.config.IGenerateConfig;
 import org.metaborg.core.config.LanguageComponentConfigBuilder;
+import org.metaborg.core.config.ProjectConfig;
 import org.metaborg.core.language.LanguageContributionIdentifier;
 import org.metaborg.core.language.LanguageIdentifier;
 
@@ -34,9 +35,10 @@ public class LanguageSpecConfigBuilder extends LanguageComponentConfigBuilder im
         if(configuration == null) {
             configuration = configReaderWriter.create(null, rootFolder);
         }
-        final LanguageSpecConfig config = new LanguageSpecConfig(configuration, metaborgVersion, identifier, name,
-            compileDeps, sourceDeps, javaDeps, sdfEnabled, parseTable, completionsParseTable, typesmart, langContribs,
-            generates, exports, pardonedLanguages, useBuildSystemSpec);
+        ProjectConfig projectConfig = projectConfigBuilder.build(configuration);
+        final LanguageSpecConfig config =
+                new LanguageSpecConfig(configuration, projectConfig, identifier, name, sdfEnabled, parseTable,
+                        completionsParseTable, langContribs, generates, exports, pardonedLanguages, useBuildSystemSpec);
         return config;
     }
 
@@ -59,16 +61,6 @@ public class LanguageSpecConfigBuilder extends LanguageComponentConfigBuilder im
 
     @Override public ILanguageSpecConfigBuilder withMetaborgVersion(String metaborgVersion) {
         super.withMetaborgVersion(metaborgVersion);
-        return this;
-    }
-
-    @Override public ILanguageSpecConfigBuilder withIdentifier(LanguageIdentifier identifier) {
-        super.withIdentifier(identifier);
-        return this;
-    }
-
-    @Override public ILanguageSpecConfigBuilder withName(String name) {
-        super.withName(name);
         return this;
     }
 
@@ -99,6 +91,17 @@ public class LanguageSpecConfigBuilder extends LanguageComponentConfigBuilder im
 
     @Override public ILanguageSpecConfigBuilder addJavaDeps(Iterable<LanguageIdentifier> deps) {
         super.addJavaDeps(deps);
+        return this;
+    }
+
+
+    @Override public ILanguageSpecConfigBuilder withIdentifier(LanguageIdentifier identifier) {
+        super.withIdentifier(identifier);
+        return this;
+    }
+
+    @Override public ILanguageSpecConfigBuilder withName(String name) {
+        super.withName(name);
         return this;
     }
 

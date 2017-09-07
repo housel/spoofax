@@ -3,9 +3,12 @@ package org.metaborg.spoofax.meta.core.config;
 import javax.annotation.Nullable;
 
 import org.apache.commons.vfs2.FileObject;
+import org.metaborg.core.config.IExportConfig;
+import org.metaborg.core.config.IGenerateConfig;
 import org.metaborg.core.language.LanguageContributionIdentifier;
 import org.metaborg.core.language.LanguageIdentifier;
 import org.metaborg.meta.core.config.ILanguageSpecConfigBuilder;
+import org.metaborg.meta.nabl2.config.NaBL2Config;
 import org.metaborg.util.cmd.Arguments;
 
 /**
@@ -45,16 +48,6 @@ public interface ISpoofaxLanguageSpecConfigBuilder extends ILanguageSpecConfigBu
     /**
      * {@inheritDoc}
      */
-    @Override ISpoofaxLanguageSpecConfigBuilder withIdentifier(LanguageIdentifier identifier);
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override ISpoofaxLanguageSpecConfigBuilder withName(String name);
-
-    /**
-     * {@inheritDoc}
-     */
     @Override ISpoofaxLanguageSpecConfigBuilder withCompileDeps(Iterable<LanguageIdentifier> dependencies);
 
     /**
@@ -73,25 +66,66 @@ public interface ISpoofaxLanguageSpecConfigBuilder extends ILanguageSpecConfigBu
     @Override ISpoofaxLanguageSpecConfigBuilder addSourceDeps(Iterable<LanguageIdentifier> dependencies);
 
     /**
-     * {@inheritDoc}
+     * {@see ISpoofaxProjectConfigBuilder#withTypesmart(boolean)}
      */
-    @Override ISpoofaxLanguageSpecConfigBuilder
-        withLangContribs(Iterable<LanguageContributionIdentifier> contributions);
+    ISpoofaxLanguageSpecConfigBuilder withTypesmart(boolean typesmart);
+
+    /**
+     * {@see ISpoofaxProjectConfigBuilder#withNaBL2Config(NaBL2Config)}
+     */
+    ISpoofaxLanguageSpecConfigBuilder withNaBL2Config(NaBL2Config config);
+
 
     /**
      * {@inheritDoc}
      */
-    @Override ISpoofaxLanguageSpecConfigBuilder addLangContribs(Iterable<LanguageContributionIdentifier> contributions);
+    @Override ISpoofaxLanguageSpecConfigBuilder withIdentifier(LanguageIdentifier identifier);
 
     /**
      * {@inheritDoc}
      */
-    @Override ISpoofaxLanguageSpecConfigBuilder withPardonedLanguages(Iterable<String> contributions);
+    @Override ISpoofaxLanguageSpecConfigBuilder withName(String name);
 
     /**
      * {@inheritDoc}
      */
-    @Override ISpoofaxLanguageSpecConfigBuilder addPardonedLanguages(Iterable<String> contributions);
+    @Override ISpoofaxLanguageSpecConfigBuilder withLangContribs(Iterable<LanguageContributionIdentifier> contribs);
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override ISpoofaxLanguageSpecConfigBuilder addLangContribs(Iterable<LanguageContributionIdentifier> contribs);
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override ISpoofaxLanguageSpecConfigBuilder withGenerates(Iterable<IGenerateConfig> generates);
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override ISpoofaxLanguageSpecConfigBuilder addGenerates(Iterable<IGenerateConfig> generates);
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override ISpoofaxLanguageSpecConfigBuilder withExports(Iterable<IExportConfig> exports);
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override ISpoofaxLanguageSpecConfigBuilder addExports(Iterable<IExportConfig> exports);
+
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override ISpoofaxLanguageSpecConfigBuilder withPardonedLanguages(Iterable<String> languages);
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override ISpoofaxLanguageSpecConfigBuilder addPardonedLanguages(Iterable<String> languages);
 
     /**
      * {@inheritDoc}
@@ -106,9 +140,8 @@ public interface ISpoofaxLanguageSpecConfigBuilder extends ILanguageSpecConfigBu
      *            The SDF version.
      * @return This builder.
      */
-
     ISpoofaxLanguageSpecConfigBuilder withSdfVersion(SdfVersion sdfversion);
-    
+
     /**
      * Sets the sdf2table version.
      *
@@ -117,7 +150,7 @@ public interface ISpoofaxLanguageSpecConfigBuilder extends ILanguageSpecConfigBu
      * @return This builder.
      */
     ISpoofaxLanguageSpecConfigBuilder withSdf2tableVersion(Sdf2tableVersion sdf2tableVersion);
-    
+
     /**
      * Sets the path to the main SDF file.
      *
@@ -126,33 +159,6 @@ public interface ISpoofaxLanguageSpecConfigBuilder extends ILanguageSpecConfigBu
      * @return This builder.
      */
     ISpoofaxLanguageSpecConfigBuilder withSdfMainFile(String sdfMainFile);
-    
-    /**
-     * Sets the placeholder prefix.
-     *
-     * @param placeholderPrefix
-     *            The placeholder prefix.
-     * @return This builder.
-     */
-    ISpoofaxLanguageSpecConfigBuilder withPlaceholderPrefix(String placeholderPrefix);
-    
-    /**
-     * Sets the placeholder postfix.
-     *
-     * @param placeholderPostfix
-     *            The placeholder postfix.
-     * @return This builder.
-     */
-    ISpoofaxLanguageSpecConfigBuilder withPlaceholderPostfix(String placeholderPostfix);
-    
-    /**
-     * Sets the language to be pretty printed.
-     *
-     * @param prettyPrintLanguage
-     *            The language to be pretty printed.
-     * @return This builder.
-     */
-    ISpoofaxLanguageSpecConfigBuilder withPrettyPrintLanguage(String prettyPrintLanguage);
 
     /**
      * Sets the external def.
@@ -171,6 +177,33 @@ public interface ISpoofaxLanguageSpecConfigBuilder extends ILanguageSpecConfigBu
      * @return This builder.
      */
     ISpoofaxLanguageSpecConfigBuilder withSdfArgs(Arguments args);
+
+    /**
+     * Sets the placeholder prefix.
+     *
+     * @param placeholderPrefix
+     *            The placeholder prefix.
+     * @return This builder.
+     */
+    ISpoofaxLanguageSpecConfigBuilder withPlaceholderPrefix(String placeholderPrefix);
+
+    /**
+     * Sets the placeholder postfix.
+     *
+     * @param placeholderPostfix
+     *            The placeholder postfix.
+     * @return This builder.
+     */
+    ISpoofaxLanguageSpecConfigBuilder withPlaceholderPostfix(String placeholderPostfix);
+
+    /**
+     * Sets the language to be pretty printed.
+     *
+     * @param prettyPrintLanguage
+     *            The language to be pretty printed.
+     * @return This builder.
+     */
+    ISpoofaxLanguageSpecConfigBuilder withPrettyPrintLanguage(String prettyPrintLanguage);
 
     /**
      * Sets the project artifact format.
@@ -207,7 +240,7 @@ public interface ISpoofaxLanguageSpecConfigBuilder extends ILanguageSpecConfigBu
      * @return This builder.
      */
     ISpoofaxLanguageSpecConfigBuilder withStrTypesmart(boolean typesmart);
-    
+
     /**
      * Sets the Stratego arguments.
      *

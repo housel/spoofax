@@ -20,18 +20,19 @@ import com.google.common.collect.Lists;
  * An implementation of the {@link ILanguageComponentConfig} interface that is backed by an
  * {@link ImmutableConfiguration} object.
  */
-public class ProjectConfig implements IProjectConfig, IConfig {
+public class ProjectConfig extends AConfig implements IProjectConfig, IConfig {
     private static final String PROP_METABORG_VERSION = "metaborgVersion";
-    private static final String PROP_COMPILE_DEPENDENCIES = "dependencies.compile";
-    private static final String PROP_SOURCE_DEPENDENCIES = "dependencies.source";
-    private static final String PROP_JAVA_DEPENDENCIES = "dependencies.java";
-    private static final String PROP_DEBUG_TYPESMART = "debug.typesmart";
 
-    protected final HierarchicalConfiguration<ImmutableNode> config;
+    private static final String PROP_SOURCES = "sources";
+
+    private static final String PROP_DEPENDENCIES = "dependencies";
+    private static final String PROP_COMPILE_DEPENDENCIES = PROP_DEPENDENCIES + ".compile";
+    private static final String PROP_SOURCE_DEPENDENCIES = PROP_DEPENDENCIES + ".source";
+    private static final String PROP_JAVA_DEPENDENCIES = PROP_DEPENDENCIES + ".java";
 
 
     public ProjectConfig(HierarchicalConfiguration<ImmutableNode> config) {
-        this.config = config;
+        super(config);
 
         // Set metaborgVersion to default if it was not set in the config.
         if(!config.containsKey(PROP_METABORG_VERSION)) {
@@ -40,12 +41,15 @@ public class ProjectConfig implements IProjectConfig, IConfig {
     }
 
     protected ProjectConfig(HierarchicalConfiguration<ImmutableNode> config, @Nullable String metaborgVersion,
-        @Nullable Collection<LanguageIdentifier> compileDeps, @Nullable Collection<LanguageIdentifier> sourceDeps,
-        @Nullable Collection<LanguageIdentifier> javaDeps, @Nullable Boolean typesmart) {
+            @Nullable Collection<IExportConfig> sources, @Nullable Collection<LanguageIdentifier> compileDeps,
+            @Nullable Collection<LanguageIdentifier> sourceDeps, @Nullable Collection<LanguageIdentifier> javaDeps) {
         this(config);
 
         if(metaborgVersion != null) {
             config.setProperty(PROP_METABORG_VERSION, metaborgVersion);
+        }
+        if(sources != null) {
+            config.setProperty(PROP_SOURCES, sources);
         }
         if(compileDeps != null) {
             config.setProperty(PROP_COMPILE_DEPENDENCIES, compileDeps);
@@ -56,14 +60,6 @@ public class ProjectConfig implements IProjectConfig, IConfig {
         if(javaDeps != null) {
             config.setProperty(PROP_JAVA_DEPENDENCIES, javaDeps);
         }
-        if(typesmart != null) {
-            config.setProperty(PROP_DEBUG_TYPESMART, typesmart);
-        }
-    }
-
-
-    @Override public HierarchicalConfiguration<ImmutableNode> getConfig() {
-        return this.config;
     }
 
 
@@ -71,24 +67,36 @@ public class ProjectConfig implements IProjectConfig, IConfig {
         return config.getString(PROP_METABORG_VERSION, MetaborgConstants.METABORG_VERSION);
     }
 
+    @Override public Collection<ISourceConfig> sources() {
+        final List<HierarchicalConfiguration<ImmutableNode>> sourceConfigs = config.configurationsAt(PROP_SOURCES, false);
+        final List<ISourceConfig> sources = Lists.newArrayListWithCapacity(sourceConfigs.size());
+        for(HierarchicalConfiguration<ImmutableNode> sourceConfig : sourceConfigs) {
+            final List<String> languages = sourceConfig.getList(String.class, "language", Collections.emptyList());
+            final String directory = sourceConfig.getString("directory");
+            if(directory != null) {
+                for(String language : languages) {
+                    sources.add(new LangSource(language, directory));
+                }
+            }
+        }
+        return sources;
+    }
+
     @Override public Collection<LanguageIdentifier> compileDeps() {
         return config.getList(LanguageIdentifier.class, PROP_COMPILE_DEPENDENCIES,
-            Collections.<LanguageIdentifier>emptyList());
+                Collections.<LanguageIdentifier>emptyList());
     }
 
     @Override public Collection<LanguageIdentifier> sourceDeps() {
         return config.getList(LanguageIdentifier.class, PROP_SOURCE_DEPENDENCIES,
-            Collections.<LanguageIdentifier>emptyList());
+                Collections.<LanguageIdentifier>emptyList());
     }
 
     @Override public Collection<LanguageIdentifier> javaDeps() {
         return config.getList(LanguageIdentifier.class, PROP_JAVA_DEPENDENCIES,
-            Collections.<LanguageIdentifier>emptyList());
+                Collections.<LanguageIdentifier>emptyList());
     }
 
-    @Override public boolean typesmart() {
-        return config.getBoolean(PROP_DEBUG_TYPESMART, false);
-    }
 
     public Collection<IMessage> validate(MessageBuilder mb) {
         final Collection<IMessage> messages = Lists.newArrayList();
@@ -98,8 +106,8 @@ public class ProjectConfig implements IProjectConfig, IConfig {
         return messages;
     }
 
-    private void validateDeps(ImmutableConfiguration config, String key, String name, MessageBuilder mb,
-        Collection<IMessage> messages) {
+    private static void validateDeps(ImmutableConfiguration config, String key, String name, MessageBuilder mb,
+            Collection<IMessage> messages) {
         final List<String> depStrs = config.getList(String.class, key, Lists.<String>newArrayList());
         for(String depStr : depStrs) {
             try {
@@ -109,4 +117,5 @@ public class ProjectConfig implements IProjectConfig, IConfig {
             }
         }
     }
+
 }
